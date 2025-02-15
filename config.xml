@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="com.z3phyrl.zeitop" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0" xmlns:android="http://schemas.android.com/apk/res/android">
+    <name>Zeitop</name>
+    <description>Client for Zeitop Server. Is just a desktop clock+</description>
+    <author email="z6phyrldiv2@gmail.com" href="">
+        z3phyrl
+    </author>
+    <content src="index.html" />
+    <allow-intent href="*://localhost/*" />
+    <allow-navigation href="*://localhost/*" />
+    <access origin="*://localhost/*" />
+    <preference name="DisallowOverscroll" value="true"/>
+    <preference name="Fullscreen" value="true"/>
+    <preference name="Orientation" value="landscape"/>
+    <preference name="LogLevel" value="VERBOSE"/>
+    <platform name="android">
+        <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application">
+            <application android:usesCleartextTraffic="true" />
+        </edit-config>
+    </platform>
+</widget>
