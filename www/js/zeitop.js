@@ -13,10 +13,12 @@ function dbg(obj) {
 }
 
 class Zeitop {
-    constructor(serial, port, onready) {
+    constructor(serial, port, onready, request_timeout) {
         this.ws = new WebSocket("ws://localhost:" + port);
         this.requests = new Map(); // (service?{::request}, callback)
         this.onready = onready;
+        this.request_timeout = request_timeout | 5000; // millisecs
+        this.autonum = 0;
         let handler = (msg) => {
             if (msg.data == "?") {
                 this.ws.send("?");
@@ -30,7 +32,7 @@ class Zeitop {
             let at_index = data.indexOf("@");
             let tag_index = data.indexOf("#");
             if (tag_index > at_index || tag_index < 0) {tag_index = at_index}
-            let data_index = data.indexOf("::");
+            let data_index = data.indexOf("::", at_index);
             let parse = [data.slice(0, tag_index), data.slice(tag_index + 1, at_index), data.slice(at_index + 1, data_index), data.slice(data_index + 2)];
             let request = parse[0];
             let tag = parse[1];
@@ -55,16 +57,25 @@ class Zeitop {
             this.ws.send(serial)
         }
     }
-    request(service, request, callback, tag) {
-        if (tag == null) {
-            tag = "";
-        } else {
-            tag = "#" + tag;
+    request(service, request, callback, tag, timeout) {
+        if (tag === "") {
+            tag = "#" + this.autonum;
+            this.autonum += 1;
         }
+        else if (tag) {
+            tag = "#" + tag;
+        } else {
+            tag = "";
+        }
+        let request_timeout = timeout || this.request_timeout;
         if (this.requests.get(service)) {
             return false;
         } else {
+            let timeout = setTimeout(() => {
+                this.requests.delete((service + "::" + request))
+            }, request_timeout);
             let remove_on_callback = (reply) => {
+                clearTimeout(timeout);
                 this.requests.delete((service + "::" + request))
                 callback(reply)
             }
