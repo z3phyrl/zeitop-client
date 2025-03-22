@@ -24,23 +24,23 @@ class Zeitop {
                 this.ws.send("?");
                 return;
             }
-            if (msg.data.startsWith("!")) {
-                log(msg.data);
-                return;
-            }
             let data = msg.data;
             let at_index = data.indexOf("@");
             let tag_index = data.indexOf("#");
             if (tag_index > at_index || tag_index < 0) {tag_index = at_index}
             let data_index = data.indexOf("::", at_index);
-            let parse = [data.slice(0, tag_index), data.slice(tag_index + 1, at_index), data.slice(at_index + 1, data_index), data.slice(data_index + 2)];
+            let parse = [data.slice(0, tag_index), data.slice(tag_index, at_index), data.slice(at_index + 1, data_index), data.slice(data_index + 2)];
             let request = parse[0];
             let tag = parse[1];
             let service = parse[2];
             let reply = parse[3];
+            if (reply.startsWith("!")) {
+                log(reply);
+                return;
+            }
             let callback = this.requests.get(service);
             if (callback == null) {
-                callback = this.requests.get(service + "::" + request);
+                callback = this.requests.get(service + "::" + request + tag);
             }
             callback(reply);
         }
@@ -79,7 +79,7 @@ class Zeitop {
                 this.requests.delete((service + "::" + request))
                 callback(reply)
             }
-            this.requests.set((service + "::" + request), remove_on_callback)
+            this.requests.set((service + "::" + request + tag), remove_on_callback)
             this.ws.send("&" + service + tag + "::" + request)
             return true;
         }
