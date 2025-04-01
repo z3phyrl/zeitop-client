@@ -20,6 +20,7 @@ function onready(ws) {
         request_page("default", (page) => {
             page.apply_style();
             page.append_to(app);
+            page.init();
         });
     });
 }

@@ -17,8 +17,8 @@ class Zeitop {
         this.ws = new WebSocket("ws://localhost:" + port);
         this.requests = new Map(); // (service?{::request}, callback)
         this.onready = onready;
-        this.request_timeout = request_timeout | 5000; // millisecs
-        this.autonum = 0;
+        this.request_timeout = request_timeout || 5000; // millisecs
+        this.autonum = new Map();
         let handler = (msg) => {
             if (msg.data == "?") {
                 this.ws.send("?");
@@ -34,16 +34,19 @@ class Zeitop {
             let tag = parse[1];
             let service = parse[2];
             let reply = parse[3];
-            if (reply.startsWith("!")) {
-                log(reply);
-                return;
-            }
-            let callback = this.requests.get(service);
+            let callback = this.requests.get(service + tag);
+            console.log(service + tag);
             if (callback == null) {
                 callback = this.requests.get(service + "::" + request + tag);
             }
-            callback(reply);
-        }
+            let err = null;
+            if (reply.startsWith("!")) {
+                log(msg);
+                err = reply;
+                reply = null;
+            }
+            callback(reply, err);
+        } 
         let handshake = (msg) => {
             if (msg.data == "@Ok") {
                 console.log("Deskr :: Connected")
@@ -57,16 +60,34 @@ class Zeitop {
             this.ws.send(serial)
         }
     }
-    request(service, request, callback, tag, timeout) {
-        if (tag === "") {
-            tag = "#" + this.autonum;
-            this.autonum += 1;
-        }
-        else if (tag) {
+    auto_num(service, tag) {
+        let autonum_length = (tag.match(/#/g)||[]).length;
+        let autonum = this.autonum.get(service) + 1 || 0;
+        let num_length = autonum.toString().length;
+        let pad = autonum_length - num_length;
+        if (num_length > autonum_length) {this.autonum.set(service, 0)}
+        else {this.autonum.set(service, autonum);}
+        let res = tag.replace("#".repeat(autonum_length), "0".repeat(pad) + autonum);
+        if (res === tag) {
+            res = "error-" + "0".repeat(pad) + autonum;
+            dbg("ERROR BAD TAG :: " + service + "#" + tag + " => #" + res);
+        } 
+        return res;
+    }
+    process_tag(service, tag) {
+        if (tag.indexOf("#") > -1) {
+            tag = "#" + this.auto_num(service, tag);
+        } else if (tag) {
             tag = "#" + tag;
+        } else if (tag === "") {
+            tag = "#" + this.auto_num(service, "####");
         } else {
             tag = "";
         }
+        return tag;
+    }
+    request(service, request, callback, tag, timeout) {
+        tag = this.process_tag(service, tag);
         let request_timeout = timeout || this.request_timeout;
         if (this.requests.get(service)) {
             return false;
@@ -84,9 +105,10 @@ class Zeitop {
             return true;
         }
     }
-    subscribe(service, callback) {
-        this.requests.set(service, callback);
-        this.ws.send("&" + service)
+    subscribe(service, callback, tag) {
+        tag = this.process_tag(service, tag);
+        this.requests.set(service + tag, callback);
+        this.ws.send("&" + service + tag)
     }
 }
 
